@@ -10,6 +10,7 @@
     deleteName: '', 
     importModal: false, 
     selectedFileName: '',
+    selectMode: false,
     selectedIds: [],
     bulkDeleteModal: false,
     selectAll: false,
@@ -32,6 +33,16 @@
             <p class="text-xs text-slate-500">Kelola data tenaga pendidik pada Bagian Kedokteran, Bagian Farmasi, dan Bagian Keperawatan</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+            <!-- Tombol Mode Checklist Hapus -->
+            <button type="button" 
+                    @click="selectMode = !selectMode; if (!selectMode) { selectedIds = []; selectAll = false; }"
+                    :class="selectMode ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 ring-2 ring-amber-300/50' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'"
+                    title="Tampilkan checkbox untuk memilih data yang akan dihapus massal"
+                    class="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition shadow-sm">
+                <i class="fa-solid fa-list-check text-xs"></i>
+                <span x-text="selectMode ? 'Tutup Checklist' : 'Pilih Data (Checklist)'"></span>
+            </button>
+
             <!-- Tombol Export Excel -->
             <a href="{{ route('admin.dosen.export', request()->query()) }}" 
                title="Ekspor seluruh / hasil filter data dosen ke file Excel (.xlsx)"
@@ -104,7 +115,7 @@
     </div>
 
     <!-- Bulk Action Bar (Muncul saat ada data terpilih) -->
-    <div x-show="selectedIds.length > 0" x-cloak 
+    <div x-show="selectMode && selectedIds.length > 0" x-cloak 
          class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm transition animate-fade-in">
         <div class="flex items-center space-x-2.5 text-xs text-rose-800">
             <span class="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs">
@@ -133,7 +144,7 @@
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th class="py-3.5 px-3 text-center w-10">
+                        <th x-show="selectMode" x-cloak class="py-3.5 px-3 text-center w-10">
                             <input type="checkbox" 
                                    @change="toggleSelectAll({{ json_encode($dosens->pluck('id')->toArray()) }})"
                                    x-model="selectAll"
@@ -154,8 +165,8 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
                     @forelse($dosens as $index => $dosen)
-                        <tr class="hover:bg-slate-50 transition" :class="selectedIds.includes({{ $dosen->id }}) ? 'bg-blue-50/50' : ''">
-                            <td class="py-3.5 px-3 text-center">
+                        <tr class="hover:bg-slate-50 transition" :class="selectMode && selectedIds.includes({{ $dosen->id }}) ? 'bg-blue-50/50' : ''">
+                            <td x-show="selectMode" x-cloak class="py-3.5 px-3 text-center">
                                 <input type="checkbox" 
                                        value="{{ $dosen->id }}" 
                                        x-model="selectedIds"
@@ -228,7 +239,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="py-12 text-center text-slate-400">
+                            <td :colspan="selectMode ? 11 : 10" class="py-12 text-center text-slate-400">
                                 Belum ada data dosen.
                             </td>
                         </tr>
