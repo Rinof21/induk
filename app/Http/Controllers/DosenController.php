@@ -193,4 +193,21 @@ class DosenController extends Controller
         return redirect()->route('admin.dosen.index')
             ->with('success', $message);
     }
+
+    /**
+     * Hapus massal data dosen terpilih (Soft Delete)
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->route('admin.dosen.index')
+                ->with('error', 'Tidak ada data dosen yang dipilih untuk dihapus.');
+        }
+
+        $count = Dosen::whereIn('id', $ids)->delete();
+
+        return redirect()->route('admin.dosen.index')
+            ->with('success', "Sebanyak {$count} data dosen terpilih berhasil dipindahkan ke Kotak Sampah (Trash)!");
+    }
 }

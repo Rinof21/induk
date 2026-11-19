@@ -179,5 +179,22 @@ class EksternalController extends Controller
         return redirect()->route('admin.eksternal.index')
             ->with('success', $message);
     }
+
+    /**
+     * Hapus massal data eksternal terpilih (Soft Delete)
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->route('admin.eksternal.index')
+                ->with('error', 'Tidak ada data eksternal yang dipilih untuk dihapus.');
+        }
+
+        $count = Eksternal::whereIn('id', $ids)->delete();
+
+        return redirect()->route('admin.eksternal.index')
+            ->with('success', "Sebanyak {$count} data eksternal terpilih berhasil dipindahkan ke Kotak Sampah (Trash)!");
+    }
 }
 

@@ -4,7 +4,26 @@
 @section('page_title', 'Kelola Data Dosen')
 
 @section('content')
-<div class="space-y-6" x-data="{ deleteModal: false, deleteUrl: '', deleteName: '', importModal: false, selectedFileName: '' }">
+<div class="space-y-6" x-data="{ 
+    deleteModal: false, 
+    deleteUrl: '', 
+    deleteName: '', 
+    importModal: false, 
+    selectedFileName: '',
+    selectedIds: [],
+    bulkDeleteModal: false,
+    selectAll: false,
+    toggleSelectAll(ids) {
+        if (this.selectAll) {
+            this.selectedIds = [...ids];
+        } else {
+            this.selectedIds = [];
+        }
+    },
+    updateSelectAll(ids) {
+        this.selectAll = ids.length > 0 && ids.every(id => this.selectedIds.includes(id));
+    }
+}">
 
     <!-- Top Action Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -84,13 +103,44 @@
         </form>
     </div>
 
+    <!-- Bulk Action Bar (Muncul saat ada data terpilih) -->
+    <div x-show="selectedIds.length > 0" x-cloak 
+         class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm transition animate-fade-in">
+        <div class="flex items-center space-x-2.5 text-xs text-rose-800">
+            <span class="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs">
+                <i class="fa-solid fa-check"></i>
+            </span>
+            <span><strong x-text="selectedIds.length"></strong> data dosen dipilih</span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button type="button" 
+                    @click="selectedIds = []; selectAll = false" 
+                    class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition">
+                Batal Pilih
+            </button>
+            <button type="button" 
+                    @click="bulkDeleteModal = true"
+                    class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md shadow-rose-600/30 transition">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+                <span>Hapus Terpilih (<span x-text="selectedIds.length"></span>)</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Data Table -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th class="py-3.5 px-4 text-center w-12">NO</th>
+                        <th class="py-3.5 px-3 text-center w-10">
+                            <input type="checkbox" 
+                                   @change="toggleSelectAll({{ json_encode($dosens->pluck('id')->toArray()) }})"
+                                   x-model="selectAll"
+                                   title="Pilih Semua di Halaman Ini"
+                                   class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                        </th>
+                        <th class="py-3.5 px-3 text-center w-12">NO</th>
                         <th class="py-3.5 px-4">NAMA LENGKAP</th>
                         <th class="py-3.5 px-4">NIP / NUPTK</th>
                         <th class="py-3.5 px-4">NIK / NPWP</th>
@@ -104,8 +154,15 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
                     @forelse($dosens as $index => $dosen)
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="py-3.5 px-4 text-center text-slate-400">
+                        <tr class="hover:bg-slate-50 transition" :class="selectedIds.includes({{ $dosen->id }}) ? 'bg-blue-50/50' : ''">
+                            <td class="py-3.5 px-3 text-center">
+                                <input type="checkbox" 
+                                       value="{{ $dosen->id }}" 
+                                       x-model="selectedIds"
+                                       @change="updateSelectAll({{ json_encode($dosens->pluck('id')->toArray()) }})"
+                                       class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                            </td>
+                            <td class="py-3.5 px-3 text-center text-slate-400">
                                 {{ $dosens->firstItem() + $index }}
                             </td>
                             <td class="py-3.5 px-4 font-bold text-slate-900">
@@ -171,7 +228,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="py-12 text-center text-slate-400">
+                            <td colspan="11" class="py-12 text-center text-slate-400">
                                 Belum ada data dosen.
                             </td>
                         </tr>
@@ -213,6 +270,38 @@
                         </button>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus Massal -->
+    <div x-show="bulkDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen p-4 text-center">
+            <div x-show="bulkDeleteModal" @click="bulkDeleteModal = false" class="fixed inset-0 bg-slate-900/60 transition-opacity"></div>
+            
+            <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl relative z-10">
+                <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4 text-xl">
+                    <i class="fa-solid fa-trash-can"></i>
+                </div>
+                <h4 class="text-base font-bold text-slate-900">Hapus Data Terpilih?</h4>
+                <p class="text-xs text-slate-500 mt-2">
+                    Apakah Anda yakin ingin memindahkan <strong x-text="selectedIds.length" class="text-rose-600"></strong> data dosen terpilih ke Kotak Sampah? Data dapat dipulihkan sewaktu-waktu.
+                </p>
+
+                <form action="{{ route('admin.dosen.bulk-delete') }}" method="POST" class="mt-6">
+                    @csrf
+                    <template x-for="id in selectedIds" :key="id">
+                        <input type="hidden" name="ids[]" :value="id">
+                    </template>
+                    <div class="flex items-center space-x-3">
+                        <button type="button" @click="bulkDeleteModal = false" class="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+                            Batal
+                        </button>
+                        <button type="submit" class="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-rose-600/30 transition">
+                            Ya, Hapus Terpilih
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

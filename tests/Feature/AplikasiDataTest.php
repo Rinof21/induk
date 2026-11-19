@@ -389,5 +389,63 @@ class AplikasiDataTest extends TestCase
             @unlink($tempPath);
         }
     }
+
+    public function test_bulk_delete_eksternal()
+    {
+        $admin = User::where('email', 'admin@untan.ac.id')->first();
+
+        $e1 = Eksternal::create([
+            'nama_lengkap' => 'Bulk Delete Eksternal 1',
+            'pendidikan_terakhir' => 'S2',
+            'bagian' => 'Bagian Farmasi',
+        ]);
+        $e2 = Eksternal::create([
+            'nama_lengkap' => 'Bulk Delete Eksternal 2',
+            'pendidikan_terakhir' => 'Sp-1',
+            'bagian' => 'Bagian Kedokteran',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/eksternal/bulk-delete', [
+            'ids' => [$e1->id, $e2->id],
+        ]);
+
+        $response->assertRedirect(route('admin.eksternal.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertSoftDeleted('eksternals', ['id' => $e1->id]);
+        $this->assertSoftDeleted('eksternals', ['id' => $e2->id]);
+    }
+
+    public function test_bulk_delete_dosen()
+    {
+        $admin = User::where('email', 'admin@untan.ac.id')->first();
+
+        $d1 = Dosen::create([
+            'nama_lengkap' => 'Bulk Delete Dosen 1',
+            'jafung' => 'Asisten Ahli',
+            'pendidikan_terakhir' => 'S2',
+            'bagian' => 'Bagian Kedokteran',
+            'status_ikatan_kerja' => 'Dosen PNS',
+            'status_tugas' => 'Aktif',
+        ]);
+        $d2 = Dosen::create([
+            'nama_lengkap' => 'Bulk Delete Dosen 2',
+            'jafung' => 'Lektor',
+            'pendidikan_terakhir' => 'S3',
+            'bagian' => 'Bagian Keperawatan',
+            'status_ikatan_kerja' => 'Dosen Tetap Non-PNS',
+            'status_tugas' => 'Aktif',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/dosen/bulk-delete', [
+            'ids' => [$d1->id, $d2->id],
+        ]);
+
+        $response->assertRedirect(route('admin.dosen.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertSoftDeleted('dosens', ['id' => $d1->id]);
+        $this->assertSoftDeleted('dosens', ['id' => $d2->id]);
+    }
 }
 

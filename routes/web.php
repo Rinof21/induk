@@ -61,6 +61,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('dosen/export/xlsx', [DosenController::class, 'export'])->name('dosen.export');
     Route::get('dosen/template/xlsx', [DosenController::class, 'downloadTemplate'])->name('dosen.template');
     Route::post('dosen/import/xlsx', [DosenController::class, 'import'])->name('dosen.import');
+    Route::post('dosen/bulk-delete', [DosenController::class, 'bulkDelete'])->name('dosen.bulk-delete');
 
     // CRUD Data Dosen Internal
     Route::resource('dosen', DosenController::class);
@@ -69,6 +70,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('eksternal/export/xlsx', [EksternalController::class, 'export'])->name('eksternal.export');
     Route::get('eksternal/template/xlsx', [EksternalController::class, 'downloadTemplate'])->name('eksternal.template');
     Route::post('eksternal/import/xlsx', [EksternalController::class, 'import'])->name('eksternal.import');
+    Route::post('eksternal/bulk-delete', [EksternalController::class, 'bulkDelete'])->name('eksternal.bulk-delete');
 
     // CRUD Data Eksternal
     Route::resource('eksternal', EksternalController::class);
