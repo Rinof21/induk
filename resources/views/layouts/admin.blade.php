@@ -83,6 +83,23 @@
                         <span>Pasien Standar (PS)</span>
                     </a>
 
+                    <!-- Verifikasi Pengajuan Perubahan Data -->
+                    <a href="{{ route('admin.verifikasi.index') }}" 
+                       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition {{ request()->routeIs('admin.verifikasi.*') ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-clipboard-check w-5 text-center text-base {{ request()->routeIs('admin.verifikasi.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                            <span>Verifikasi Data</span>
+                        </div>
+                        @php
+                            $pendingCount = \App\Models\PengajuanPerubahan::where('status', 'pending')->count();
+                        @endphp
+                        @if($pendingCount > 0)
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-400 text-amber-950 font-mono">
+                                {{ $pendingCount }}
+                            </span>
+                        @endif
+                    </a>
+
                     <!-- Kotak Sampah (Soft Delete & Trash) -->
                     <a href="{{ route('admin.trash.index') }}" 
                        class="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition {{ request()->routeIs('admin.trash.*') ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">

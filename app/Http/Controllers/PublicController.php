@@ -7,6 +7,7 @@ use App\Models\Eksternal;
 use App\Models\Penguji;
 use App\Models\PasienStandar;
 use App\Models\AppSetting;
+use App\Models\PengajuanPerubahan;
 use Illuminate\Http\Request;
 
 class PublicController extends Controller
@@ -220,6 +221,74 @@ class PublicController extends Controller
     {
         $request->session()->forget('public_authenticated');
         return redirect()->route('publik.token.gate')->with('info', 'Sesi akses publik Anda telah diakhiri.');
+    }
+
+    /**
+     * Simpan pengajuan perubahan data dari pengunjung portal
+     */
+    public function ajukanPerubahan(Request $request)
+    {
+        $request->validate([
+            'tipe' => ['required', 'string', 'in:dosen,eksternal'],
+            'record_id' => ['nullable', 'integer'],
+            'nama_pengaju' => ['required', 'string', 'max:255'],
+            'email_pengaju' => ['nullable', 'email', 'max:255'],
+            'no_hp_pengaju' => ['nullable', 'string', 'max:30'],
+            'alasan_perubahan' => ['nullable', 'string', 'max:1000'],
+            'dokumen' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'], // maks 5MB
+            'data_baru' => ['required', 'array'],
+        ], [
+            'nama_pengaju.required' => 'Nama pengaju perubahan wajib diisi.',
+            'data_baru.required' => 'Data perubahan wajib disertakan.',
+            'dokumen.mimes' => 'Format dokumen pendukung harus berupa PDF, JPG, atau PNG.',
+            'dokumen.max' => 'Ukuran dokumen pendukung maksimal 5 MB.',
+        ]);
+
+        $tipe = $request->input('tipe');
+        $recordId = $request->input('record_id');
+
+        $dataLama = [];
+        if ($recordId) {
+            if ($tipe === 'dosen') {
+                $target = Dosen::find($recordId);
+                if ($target) {
+                    $dataLama = $target->only([
+                        'nama_lengkap', 'nip', 'nuptk', 'nik', 'npwp', 'bagian',
+                        'pangkat_gol', 'jafung', 'pendidikan_terakhir',
+                        'status_ikatan_kerja', 'status_tugas', 'email', 'no_hp', 'bidang_keahlian'
+                    ]);
+                }
+            } elseif ($tipe === 'eksternal') {
+                $target = Eksternal::find($recordId);
+                if ($target) {
+                    $dataLama = $target->only([
+                        'nama_lengkap', 'nip', 'nuptk', 'nik', 'npwp', 'bagian',
+                        'asal_institusi', 'pangkat_gol', 'pendidikan_terakhir',
+                        'email', 'no_hp', 'bidang_keahlian'
+                    ]);
+                }
+            }
+        }
+
+        $dokumenPath = null;
+        if ($request->hasFile('dokumen')) {
+            $dokumenPath = $request->file('dokumen')->store('dokumen_pengajuan', 'public');
+        }
+
+        PengajuanPerubahan::create([
+            'tipe' => $tipe,
+            'record_id' => $recordId,
+            'nama_pengaju' => $request->input('nama_pengaju'),
+            'email_pengaju' => $request->input('email_pengaju'),
+            'no_hp_pengaju' => $request->input('no_hp_pengaju'),
+            'alasan_perubahan' => $request->input('alasan_perubahan'),
+            'data_lama' => !empty($dataLama) ? $dataLama : null,
+            'data_baru' => $request->input('data_baru'),
+            'dokumen_pendukung' => $dokumenPath,
+            'status' => 'pending',
+        ]);
+
+        return back()->with('success', 'Pengajuan perubahan data berhasil dikirim! Tim Administrator akan meninjau dan memverifikasi data sebelum diperbarui.');
     }
 }
 

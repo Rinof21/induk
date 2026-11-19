@@ -11,6 +11,7 @@ use App\Http\Controllers\PasienStandarController;
 use App\Http\Controllers\SettingPublikController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TrashController;
+use App\Http\Controllers\VerifikasiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +39,7 @@ Route::middleware(['public.token'])->prefix('publik')->name('publik.')->group(fu
     Route::get('/eksternal', [PublicController::class, 'eksternal'])->name('eksternal');
     Route::get('/penguji', [PublicController::class, 'penguji'])->name('penguji');
     Route::get('/pasien-standar', [PublicController::class, 'pasienStandar'])->name('pasien-standar');
+    Route::post('/ajukan-perubahan', [PublicController::class, 'ajukanPerubahan'])->name('ajukan-perubahan');
 });
 
 /*
@@ -99,5 +101,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::delete('/{tipe}/force-delete/{id}', [TrashController::class, 'forceDelete'])->name('force-delete');
         Route::post('/{tipe}/restore-all', [TrashController::class, 'restoreAll'])->name('restore-all');
         Route::post('/{tipe}/empty', [TrashController::class, 'emptyTrash'])->name('empty');
+    });
+
+    // Verifikasi Pengajuan Perubahan Data dari Publik
+    Route::prefix('verifikasi')->name('verifikasi.')->group(function () {
+        Route::get('/', [VerifikasiController::class, 'index'])->name('index');
+        Route::get('/{pengajuan}', [VerifikasiController::class, 'show'])->name('show');
+        Route::post('/{pengajuan}/approve', [VerifikasiController::class, 'approve'])->name('approve');
+        Route::post('/{pengajuan}/reject', [VerifikasiController::class, 'reject'])->name('reject');
+        Route::delete('/{pengajuan}', [VerifikasiController::class, 'destroy'])->name('destroy');
     });
 });

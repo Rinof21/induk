@@ -9,6 +9,7 @@ use App\Models\Eksternal;
 use App\Models\Penguji;
 use App\Models\PasienStandar;
 use App\Models\AppSetting;
+use App\Models\PengajuanPerubahan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -446,6 +447,126 @@ class AplikasiDataTest extends TestCase
 
         $this->assertSoftDeleted('dosens', ['id' => $d1->id]);
         $this->assertSoftDeleted('dosens', ['id' => $d2->id]);
+    }
+
+    public function test_pengunjung_dapat_mengajukan_perubahan_data()
+    {
+        AppSetting::setVal('public_token_enabled', '0');
+
+        $dosen = Dosen::create([
+            'nama_lengkap' => 'Dosen Pengujian Perubahan',
+            'nip' => '198501012010011099',
+            'jafung' => 'Asisten Ahli',
+            'pendidikan_terakhir' => 'S2',
+            'bagian' => 'Bagian Farmasi',
+            'status_ikatan_kerja' => 'Dosen PNS',
+            'status_tugas' => 'Aktif',
+        ]);
+
+        $response = $this->from('/publik/dosen')->post(route('publik.ajukan-perubahan'), [
+            'tipe' => 'dosen',
+            'record_id' => $dosen->id,
+            'nama_pengaju' => 'Dr. Budi Santoso',
+            'email_pengaju' => 'budi@example.com',
+            'no_hp_pengaju' => '081234567890',
+            'alasan_perubahan' => 'Kenaikan pangkat dan gelar baru',
+            'data_baru' => [
+                'nama_lengkap' => 'Dr. Dosen Pengujian Perubahan, M.Farm.',
+                'nip' => '198501012010011099',
+                'jafung' => 'Lektor',
+                'pendidikan_terakhir' => 'S3',
+                'bagian' => 'Bagian Farmasi',
+                'status_ikatan_kerja' => 'Dosen PNS',
+                'status_tugas' => 'Aktif',
+            ],
+        ]);
+
+        $response->assertRedirect('/publik/dosen');
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('pengajuan_perubahans', [
+            'tipe' => 'dosen',
+            'record_id' => $dosen->id,
+            'nama_pengaju' => 'Dr. Budi Santoso',
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_admin_dapat_menyetujui_dan_menerapkan_perubahan_data()
+    {
+        $admin = User::where('email', 'admin@untan.ac.id')->first();
+
+        $dosen = Dosen::create([
+            'nama_lengkap' => 'Dosen Untuk Disetujui',
+            'nip' => '198001012005011088',
+            'jafung' => 'Asisten Ahli',
+            'pendidikan_terakhir' => 'S2',
+            'bagian' => 'Bagian Kedokteran',
+            'status_ikatan_kerja' => 'Dosen PNS',
+            'status_tugas' => 'Aktif',
+        ]);
+
+        $pengajuan = PengajuanPerubahan::create([
+            'tipe' => 'dosen',
+            'record_id' => $dosen->id,
+            'nama_pengaju' => 'Admin Verifikator Test',
+            'email_pengaju' => 'pemohon@untan.ac.id',
+            'alasan_perubahan' => 'Update jabatan dan gelar',
+            'data_lama' => $dosen->only(['nama_lengkap', 'jafung', 'pendidikan_terakhir']),
+            'data_baru' => [
+                'nama_lengkap' => 'Prof. Dosen Untuk Disetujui, Ph.D.',
+                'jafung' => 'Guru Besar',
+                'pendidikan_terakhir' => 'S3',
+            ],
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.verifikasi.approve', $pengajuan), [
+            'catatan_admin' => 'Data SK kenaikan jabatan telah diverifikasi valid.',
+        ]);
+
+        $response->assertRedirect(route('admin.verifikasi.index'));
+        $response->assertSessionHas('success');
+
+        // Pastikan record master ter-update
+        $dosen->refresh();
+        $this->assertEquals('Prof. Dosen Untuk Disetujui, Ph.D.', $dosen->nama_lengkap);
+        $this->assertEquals('Guru Besar', $dosen->jafung);
+        $this->assertEquals('S3', $dosen->pendidikan_terakhir);
+
+        // Pastikan status pengajuan menjadi approved
+        $pengajuan->refresh();
+        $this->assertEquals('approved', $pengajuan->status);
+        $this->assertEquals($admin->id, $pengajuan->verified_by);
+    }
+
+    public function test_admin_dapat_menolak_pengajuan_perubahan_data()
+    {
+        $admin = User::where('email', 'admin@untan.ac.id')->first();
+
+        $pengajuan = PengajuanPerubahan::create([
+            'tipe' => 'eksternal',
+            'record_id' => null,
+            'nama_pengaju' => 'Pengaju Ditolak',
+            'email_pengaju' => 'tolak@example.com',
+            'alasan_perubahan' => 'Tambah data eksternal',
+            'data_baru' => [
+                'nama_lengkap' => 'Dokter Luar Tidak Valid',
+            ],
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.verifikasi.reject', $pengajuan), [
+            'catatan_admin' => 'Dokumen bukti pendukung tidak dilampirkan atau tidak valid.',
+        ]);
+
+        $response->assertRedirect(route('admin.verifikasi.index'));
+        $response->assertSessionHas('success');
+
+        $pengajuan->refresh();
+        $this->assertEquals('rejected', $pengajuan->status);
+        $this->assertEquals($admin->id, $pengajuan->verified_by);
+        $this->assertEquals('Dokumen bukti pendukung tidak dilampirkan atau tidak valid.', $pengajuan->catatan_admin);
     }
 }
 
